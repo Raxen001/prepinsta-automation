@@ -18,6 +18,7 @@ from selenium.webdriver.common.by import By
 
 PHONENUMBER = ""
 BASE_URL = "https://prepinstaprime.com/"
+MAX_RETRY_LIMIT = 10
 
 driver = webdriver.Firefox()
 driver.get(BASE_URL)
@@ -53,16 +54,47 @@ def nav_to_course():
 
 def clicker():
 
-    ele = driver.find_elements(By.CLASS_NAME, "card")
-    for i in ele:
+    # get all the chapters
+    items = driver.find_elements(By.CLASS_NAME, "card")
+
+    for i in items:
+        print(i.text.splitlines()[0])
+
+    for i in items:
+        print("clicking itmes: ", i.text.splitlines()[0])
+        driver.implicitly_wait(30)
         i.click()
-        links = i.find_elements(By.CLASS_NAME, "course-video-title")
         time.sleep(1)
-        for j in links:
-            j.click()
-            j.send_keys(Keys.ARROW_DOWN, Keys.ARROW_DOWN)
-            time.sleep(2)
-        j.send_keys(Keys.ARROW_DOWN, Keys.ARROW_DOWN)
+
+        # sub section in the chapters
+        course_body = i.find_elements(By.CSS_SELECTOR, ".card-body > .d-flex")
+
+        for chap in course_body:
+            print("chap: ", chap.text.splitlines()[0])
+            # driver.implicitly_wait(30)
+            # chap.click()
+            # time.sleep(1)
+            # find if already done. if done skip
+            # if chap.find_element(By.CSS_SELECTOR, ".checkboxDiv input").get_attribute("checked") != 'true':
+
+            chk = chap.find_element(
+                By.CSS_SELECTOR, ".checkboxDiv input").get_attribute("checked")
+            print("Flag: ", chk)
+
+            if chk:
+                continue
+
+            if not chk:
+                link = chap.find_element(
+                    By.CSS_SELECTOR, ".course-video-title")
+                print("link:", link.text)
+
+                driver.implicitly_wait(30)
+                link.click()
+                time.sleep(1)
+                # link.send_keys(Keys.ARROW_DOWN, Keys.ARROW_DOWN)
+
+    return True
 
 
 if __name__ == "__main__":
@@ -76,10 +108,15 @@ if __name__ == "__main__":
         inp = input()
 
         if inp == "click":
-            try:
-                clicker()
-            except:
-                print("something went wrong...")
+            retry_attempt = 0
+            while (retry_attempt < MAX_RETRY_LIMIT):
+                try:
+                    flag = clicker()
+                    if flag:
+                        break
+                except:
+                    print("retrying...")
+                    retry_attempt += 1
 
         if inp == 'q':
             break
